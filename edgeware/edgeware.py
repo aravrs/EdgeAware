@@ -1,10 +1,11 @@
+import os
 import boto3
 import pyrebase
 
 
 class Edgeware:
     # TODO: docstrings
-    # TODO: exceptions
+    # TODO: exceptions, auth deco
     def __init__(self, firebaseConfig):
         self.user = None
         self.user_data = None
@@ -111,8 +112,8 @@ class Edgeware:
 
     def sync(
         self,
-        override=None,
-    ):  # TODO: override
+        override=False,
+    ):
         print("Syncing...")
         all_docs = self.db.child("docs").get()  # TODO: if possible filter and fetch
 
@@ -132,11 +133,11 @@ class Edgeware:
                 f"Priority: {doc.val()['priority']}",
             )
 
-            if doc.val()["priority"] == "L":
+            if override or doc.val()["priority"] == "L":
                 # *** do nothing *** #
                 print(f"File available in {doc.val()['sender']} bucket.")
 
-            if (
+            if override or (
                 doc.val()["priority"] in ["M", "H"]
                 and doc.val()["inS3_receiver"] == False
                 and doc.val()["inS3_sender"] == True
@@ -171,13 +172,18 @@ class Edgeware:
                     Filename=doc.val()["file_path"], Key=doc.val()["file_path"]
                 )
 
+                # delete downloaded file
+                os.remove(doc.val()["file_path"])
+
                 # update meta
                 self.db.child("docs").child(doc.key()).update({"inS3_receiver": True})
                 print(
                     f"File available in your bucket, {self.user_data['bucket_name']}."
                 )
 
-            if doc.val()["priority"] == "H" and doc.val()["inLocal_receiver"] != True:
+            if override or (
+                doc.val()["priority"] == "H" and doc.val()["inLocal_receiver"] != True
+            ):
                 # *** download to user's local machine *** #
 
                 boto3.resource(
