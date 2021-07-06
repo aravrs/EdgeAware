@@ -40,27 +40,36 @@ class Edgeware:
         self.db.child("users").child(username).push(
             self.user_data, self.user["idToken"]
         )
-        print("Registered!")
+        print(f"Registered, {username}!")
 
-    def login(self, username, password):
+    def login(
+        self,
+        username,
+        password,
+    ):
         db_user_data = self.db.child("users").child(username).get().each()[0].val()
 
         self.user = self.auth.sign_in_with_email_and_password(
             email=db_user_data["email"], password=password
         )
 
-        if self.is_auth():
+        if self.user["registered"]:
             self.user_data = db_user_data
-            print("Logged in!")
+            print(f"Logged in, {username}!")
 
-    def reset_password(self, email):
+    def reset_password(
+        self,
+        email,
+    ):
         self.auth.send_password_reset_email(email)
+        print(f"Password reset mail is sent to {email}")
 
-    def is_auth(self):
-        return self.user["registered"]
-
-    def send(self, to_username, file_path, priority=None):
-
+    def send(
+        self,
+        to_username,
+        file_path,
+        priority=None,
+    ):
         # update meta
         data = {
             "sender": self.user_data["username"],
@@ -79,9 +88,10 @@ class Edgeware:
             # priority = predict(data) # TODO: ML model
             priority = "H"
             pass
+        print(f"Predicted file priority is {priority}.")
 
         self.db.child("docs").child(push_meta["name"]).update({"priority": priority})
-        print("File tracked!")
+        print(f"File {file_path} tracked, will be synced to {to_username}!")
 
         # upload user s3
         boto3.resource(
@@ -92,12 +102,16 @@ class Edgeware:
         ).Bucket(self.user_data["bucket_name"]).upload_file(
             Filename=file_path, Key=file_path
         )
-        print("Uploaded to bucket!")
+        print(f"Uploaded to bucket, {self.user_data['bucket_name']}!")
 
         # update meta
         self.db.child("docs").child(push_meta["name"]).update({"inS3_sender": True})
 
-    def sync(self):
+    def sync(
+        self,
+        override=None,
+    ):  # TODO: override
+        print("Syncing...")
         all_docs = self.db.child("docs").get()  # TODO: if possible filter and fetch
 
         # fetch where current user is receiver
@@ -109,6 +123,7 @@ class Edgeware:
 
         # s3 functions
         for doc in user_docs:
+            # TODO: prints
 
             if doc.val()["priority"] == "L":
                 # placeholder
@@ -167,3 +182,5 @@ class Edgeware:
                 self.db.child("docs").child(doc.key()).update(
                     {"inLocal_receiver": True}
                 )
+
+    print("Sync complete!")
