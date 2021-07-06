@@ -3,6 +3,8 @@ import pyrebase
 
 
 class Edgeware:
+    # TODO: docstrings
+    # TODO: exceptions
     def __init__(self, firebaseConfig):
         self.user = None
         self.user_data = None
@@ -50,7 +52,8 @@ class Edgeware:
         db_user_data = self.db.child("users").child(username).get().each()[0].val()
 
         self.user = self.auth.sign_in_with_email_and_password(
-            email=db_user_data["email"], password=password
+            email=db_user_data["email"],
+            password=password,
         )
 
         if self.user["registered"]:
@@ -83,12 +86,11 @@ class Edgeware:
         }
         push_meta = self.db.child("docs").push(data)
 
-        # update meta
+        # predict priority
         if priority is None:
             # priority = predict(data) # TODO: ML model
             priority = "H"
-            pass
-        print(f"Predicted file priority is {priority}.")
+            print(f"Predicted file priority is {priority}.")
 
         self.db.child("docs").child(push_meta["name"]).update({"priority": priority})
         print(f"File {file_path} tracked, will be synced to {to_username}!")
@@ -118,24 +120,28 @@ class Edgeware:
         user_docs = []
         for doc in all_docs.each():
             if doc.val()["receiver"] == self.user_data["username"]:
-                print(doc.val())
+                # print(doc.val())
                 user_docs.append(doc)
 
         # s3 functions
-        for doc in user_docs:
-            # TODO: prints
+        for i, doc in enumerate(user_docs):
+            print(
+                f"\n[{i}]",
+                f"Sender: {doc.val()['sender']}",
+                f"File: {doc.val()['file_path']}",
+                f"Priority: {doc.val()['priority']}",
+            )
 
             if doc.val()["priority"] == "L":
-                # placeholder
-                pass
+                # *** do nothing *** #
+                print(f"File available in {doc.val()['sender']} bucket.")
 
             if (
                 doc.val()["priority"] in ["M", "H"]
                 and doc.val()["inS3_receiver"] == False
                 and doc.val()["inS3_sender"] == True
             ):
-
-                # move to sender s3 to user s3
+                # *** move from sender s3 to user s3 *** #
 
                 # download from sender s3
                 sender_data = (
@@ -167,8 +173,13 @@ class Edgeware:
 
                 # update meta
                 self.db.child("docs").child(doc.key()).update({"inS3_receiver": True})
+                print(
+                    f"File available in your bucket, {self.user_data['bucket_name']}."
+                )
 
             if doc.val()["priority"] == "H" and doc.val()["inLocal_receiver"] != True:
+                # *** download to user's local machine *** #
+
                 boto3.resource(
                     service_name="s3",
                     region_name=self.user_data["region_name"],
@@ -182,5 +193,6 @@ class Edgeware:
                 self.db.child("docs").child(doc.key()).update(
                     {"inLocal_receiver": True}
                 )
+                print(f"File available in your local machine.")
 
-    print("Sync complete!")
+        print("Sync complete!")
