@@ -1,7 +1,8 @@
-import cmd
+import cmd, json
 from .edgeware import Edgeware
 
-ew = Edgeware()
+
+ew = Edgeware(json.load(open("../config.json")))
 
 # helpers
 def parse(arg):
