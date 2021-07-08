@@ -63,8 +63,8 @@ class Edgeware:
         self.auth.send_password_reset_email(email)
         print(f"Password reset mail is sent to {email}")
 
-    def registered(self, func):
-        def check(*args, **kwargs):
+    def registered(func):
+        def check(self, *args, **kwargs):
             if self.user["registered"]:
                 return func(*args, **kwargs)
             else:
