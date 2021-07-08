@@ -5,7 +5,7 @@ import pyrebase
 
 class Edgeware:
     # TODO: docstrings
-    # TODO: exceptions, auth deco
+    # TODO: exceptions
     def __init__(self, firebaseConfig):
         self.user = None
         self.user_data = None
@@ -13,11 +13,6 @@ class Edgeware:
         firebase = pyrebase.initialize_app(firebaseConfig)
         self.auth = firebase.auth()
         self.db = firebase.database()
-
-    # def initialize(self, firebaseConfig):
-    #     firebase = pyrebase.initialize_app(firebaseConfig)
-    #     self.auth = firebase.auth()
-    #     self.db = firebase.database()
 
     def register(
         self,
@@ -68,6 +63,16 @@ class Edgeware:
         self.auth.send_password_reset_email(email)
         print(f"Password reset mail is sent to {email}")
 
+    def registered(self, func):
+        def check(*args, **kwargs):
+            if self.user["registered"]:
+                return func(*args, **kwargs)
+            else:
+                print("Please login!")
+
+        return check
+
+    @registered
     def send(
         self,
         to_username,
@@ -110,6 +115,7 @@ class Edgeware:
         # update meta
         self.db.child("docs").child(push_meta["name"]).update({"inS3_sender": True})
 
+    @registered
     def sync(
         self,
         override=False,
