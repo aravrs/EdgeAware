@@ -2,7 +2,7 @@ import cmd, json
 from edgeware import Edgeware
 
 
-ew = Edgeware(json.load(open("../config.json")))
+ew = Edgeware(json.load(open("./config.json")))
 
 # helpers
 def parse(arg):
@@ -50,17 +50,15 @@ class EdgewareCLI(cmd.Cmd):
         ew.sync(*parse(arg))
 
     def do_logout(self, arg):
-        "Stop recording, close the turtle window, and exit:  BYE"
+        "Logout"
         print("Edgeware terminated.")
         return True
 
     # utils
     def do_record(self, arg):
-        "Save future commands to filename:  RECORD file.cmd"
         self.file = open(arg, "w")
 
     def do_playback(self, arg):
-        "Playback commands from a file:  PLAYBACK file.cmd"
         self.close()
         with open(arg) as f:
             self.cmdqueue.extend(f.read().splitlines())

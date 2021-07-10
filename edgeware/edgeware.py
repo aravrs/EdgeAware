@@ -1,7 +1,8 @@
 import os
-import ml
 import boto3
 import pyrebase
+
+import edgeware.ml
 
 
 class Edgeware:
