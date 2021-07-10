@@ -3,7 +3,7 @@ import boto3
 import pyrebase
 from prettytable import PrettyTable
 
-import edgeware.ml
+import edgeware.ml as ml
 
 
 class Edgeware:
@@ -120,13 +120,15 @@ class Edgeware:
         # update meta
         self.db.child("docs").child(push_meta["name"]).update({"inS3_sender": True})
 
-    def _get_docs(self, user):
+    def _get_docs(self, user, sender=False):
         all_docs = self.db.child("docs").get()
 
         # fetch where current user is receiver
         user_docs = []
         for doc in all_docs.each():
             if doc.val()["receiver"] == user:
+                user_docs.append(doc)
+            if sender and doc.val()["sender"] == user:
                 user_docs.append(doc)
         return user_docs
 
@@ -230,24 +232,98 @@ class Edgeware:
 
         print("Sync complete.")
 
-    def check(self):
-
-        user_docs = self._get_docs(self.user_data["username"])
-
-        # tabulate sync meta data
-        meta_table = PrettyTable(padding_width=5)
-        meta_table.field_names = ["ID", "SENDER", "FILE", "PRIORITY", "SYNCED"]
+    def delete(self, file_id):
+        print("Deleting...")
+        user_docs = self._get_docs(self.user_data["username"], sender=True)
 
         for idx, doc in enumerate(user_docs):
-            # update table
-            meta_table.add_row(
-                [
-                    idx,
-                    doc.val()["sender"],
-                    doc.val()["file_path"],
-                    doc.val()["priority"],
-                    doc.val()["synced"],
-                ]
-            )
+            if file_id == str(idx):
+                print(
+                    f"[{idx}] " + f"Sender: {doc.val()['sender']}",
+                    f"File: {doc.val()['file_path']}",
+                    f"Priority: {doc.val()['priority']}",
+                    f"Synced: {doc.val()['synced']}",
+                    sep=" | ",
+                )
 
-        print(meta_table)
+                if doc.val()["inS3_sender"]:
+                    # delete sender s3
+                    sender_data = (
+                        self.db.child("users")
+                        .child(doc.val()["sender"])
+                        .get()
+                        .each()[0]
+                        .val()
+                    )
+
+                    boto3.resource(
+                        service_name="s3",
+                        region_name=sender_data["region_name"],
+                        aws_access_key_id=sender_data["aws_access_key_id"],
+                        aws_secret_access_key=sender_data["aws_secret_access_key"],
+                    ).Bucket(sender_data["bucket_name"]).delete_objects(
+                        Delete={
+                            "Objects": [
+                                {"Key": doc.val()["file_path"]}  # the_name of_your_file
+                            ]
+                        }
+                    )
+                    print(
+                        f"File deleted from {sender_data['username']} bucket, {sender_data['bucket_name']}"
+                    )
+
+                if doc.val()["inS3_receiver"]:
+                    # delete receiver(user) s3
+                    boto3.resource(
+                        service_name="s3",
+                        region_name=self.user_data["region_name"],
+                        aws_access_key_id=self.user_data["aws_access_key_id"],
+                        aws_secret_access_key=self.user_data["aws_secret_access_key"],
+                    ).Bucket(self.user_data["bucket_name"]).delete_objects(
+                        Delete={
+                            "Objects": [
+                                {"Key": doc.val()["file_path"]}  # the_name of_your_file
+                            ]
+                        }
+                    )
+                    print(
+                        f"File deleted from your bucket, {self.user_data['bucket_name']}"
+                    )
+
+                # firebase delete meta
+                self.db.child("docs").child(doc.key()).remove()
+
+                print("File deleted.")
+
+    def check(self):
+        user_docs = self._get_docs(self.user_data["username"], sender=True)
+
+        if len(user_docs) < 1:
+            print("No files found.")
+
+        else:
+            # tabulate sync meta data
+            meta_table = PrettyTable(padding_width=5)
+            meta_table.field_names = [
+                "ID",
+                "SENDER",
+                "RECEIVER",
+                "FILE",
+                "PRIORITY",
+                "SYNCED",
+            ]
+
+            for idx, doc in enumerate(user_docs):
+                # update table
+                meta_table.add_row(
+                    [
+                        idx,
+                        doc.val()["sender"],
+                        doc.val()["receiver"],
+                        doc.val()["file_path"],
+                        doc.val()["priority"],
+                        doc.val()["synced"],
+                    ]
+                )
+
+            print(meta_table)
