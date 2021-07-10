@@ -133,13 +133,18 @@ class Edgeware:
     @registered
     def sync(
         self,
-        override=False,
+        file_id=None,
     ):
         print("Syncing...")
         user_docs = self._get_docs(self.user_data["username"])
 
         # s3 functions
         for idx, doc in enumerate(user_docs):
+
+            # force download given file id
+            override = False
+            if file_id is not None and file_id == str(idx):
+                override = True
 
             if override or not doc.val()["synced"]:
                 print(

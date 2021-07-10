@@ -50,7 +50,7 @@ class EdgewareCLI(cmd.Cmd):
         ew.check(*parse(arg))
 
     def do_sync(self, arg):
-        "Sync: override=False"
+        "Sync: file_id=None"
         ew.sync(*parse(arg))
 
     def do_logout(self, arg):
