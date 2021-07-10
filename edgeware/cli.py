@@ -16,7 +16,22 @@ class EdgewareCLI(cmd.Cmd):
 
     def do_register(self, arg):
         "Register:  email, username, password, aws_access_key_id, aws_secret_access_key, region_name, bucket_name"
-        ew.register(*parse(arg))
+        email = input("Email: ")
+        username = input("Username: ")
+        password = input("Password: ")
+        aws_access_key_id = input("AWS Access Key ID: ")
+        aws_secret_access_key = input("AWS Secret Access Key: ")
+        region_name = input("Region Name: ")
+        bucket_name = input("Bucket Name: ")
+        ew.register(
+            email,
+            username,
+            password,
+            aws_access_key_id,
+            aws_secret_access_key,
+            region_name,
+            bucket_name,
+        )
 
     def do_login(self, arg):
         "Login: username, password"
@@ -30,14 +45,13 @@ class EdgewareCLI(cmd.Cmd):
         "Send: to_username, file_path, priority=None"
         ew.send(*parse(arg))
 
-    def do_Sync(self, arg):
+    def do_sync(self, arg):
         "Sync: override=False"
         ew.sync(*parse(arg))
 
     def do_logout(self, arg):
         "Stop recording, close the turtle window, and exit:  BYE"
         print("Edgeware terminated.")
-        self.close()
         return True
 
     # utils

@@ -134,11 +134,11 @@ class Edgeware:
         # s3 functions
         for i, doc in enumerate(user_docs):
             print(
-                f"\n[{i}]",
+                f"[{i}]",
                 f"Sender: {doc.val()['sender']}",
                 f"File: {doc.val()['file_path']}",
                 f"Priority: {doc.val()['priority']}",
-                f"Synced: {doc.val()['sync']}",
+                f"Synced: {doc.val()['synced']}",
             )
 
             if override or not doc.val()["synced"]:
