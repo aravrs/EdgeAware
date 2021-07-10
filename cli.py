@@ -1,17 +1,17 @@
 import cmd, json
-from edgeware import Edgeware
+from edgeaware import EdgeAware
 
 
-ew = Edgeware(json.load(open("./config.json")))
+ew = EdgeAware(json.load(open("./config.json")))
 
 # helpers
 def parse(arg):
     return tuple(map(str, arg.split()))
 
 
-class EdgewareCLI(cmd.Cmd):
-    intro = "Welcome to Edgeware shell. Type help or ? to list commands."
-    prompt = "edgeware >> "
+class EdgeAwareCLI(cmd.Cmd):
+    intro = "Welcome to EdgeAware shell. Type help or ? to list commands."
+    prompt = "edgeaware >> "
     file = None
 
     def do_register(self, arg):
@@ -59,7 +59,7 @@ class EdgewareCLI(cmd.Cmd):
 
     def do_logout(self, arg):
         "Logout"
-        print("Edgeware terminated.")
+        print("EdgeAware terminated.")
         return True
 
     # utils
@@ -84,4 +84,4 @@ class EdgewareCLI(cmd.Cmd):
 
 
 if __name__ == "__main__":
-    EdgewareCLI().cmdloop()
+    EdgeAwareCLI().cmdloop()

@@ -3,10 +3,10 @@ import boto3
 import pyrebase
 from prettytable import PrettyTable
 
-import edgeware.ml as ml
+import edgeaware.ml as ml
 
 
-class Edgeware:
+class EdgeAware:
     # TODO: docstrings
     # TODO: exceptions
     def __init__(self, firebaseConfig):
