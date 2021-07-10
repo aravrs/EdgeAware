@@ -90,6 +90,7 @@ class Edgeware:
             "inS3_receiver": False,
             "inLocal_sender": False,
             "inLocal_receiver": False,
+            "synced": False,
         }
         push_meta = self.db.child("docs").push(data)
 
@@ -137,74 +138,81 @@ class Edgeware:
                 f"Sender: {doc.val()['sender']}",
                 f"File: {doc.val()['file_path']}",
                 f"Priority: {doc.val()['priority']}",
+                f"Synced: {doc.val()['sync']}",
             )
 
-            if override or doc.val()["priority"] == "L":
-                # *** do nothing *** #
-                print(f"File available in {doc.val()['sender']} bucket.")
+            if override or not doc.val()["synced"]:
+                if override or doc.val()["priority"] == "L":
+                    # *** do nothing *** #
+                    print(f"File available in {doc.val()['sender']} bucket.")
 
-            if override or (
-                doc.val()["priority"] in ["M", "H"]
-                and doc.val()["inS3_receiver"] == False
-                and doc.val()["inS3_sender"] == True
-            ):
-                # *** move from sender s3 to user s3 *** #
+                if override or (
+                    doc.val()["priority"] in ["M", "H"]
+                    and doc.val()["inS3_receiver"] == False
+                    and doc.val()["inS3_sender"] == True
+                ):
+                    # *** move from sender s3 to user s3 *** #
 
-                # download from sender s3
-                sender_data = (
-                    self.db.child("users")
-                    .child(doc.val()["sender"])
-                    .get()
-                    .each()[0]
-                    .val()
-                )
+                    # download from sender s3
+                    sender_data = (
+                        self.db.child("users")
+                        .child(doc.val()["sender"])
+                        .get()
+                        .each()[0]
+                        .val()
+                    )
 
-                boto3.resource(
-                    service_name="s3",
-                    region_name=sender_data["region_name"],
-                    aws_access_key_id=sender_data["aws_access_key_id"],
-                    aws_secret_access_key=sender_data["aws_secret_access_key"],
-                ).Bucket(sender_data["bucket_name"]).download_file(
-                    Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
-                )
+                    boto3.resource(
+                        service_name="s3",
+                        region_name=sender_data["region_name"],
+                        aws_access_key_id=sender_data["aws_access_key_id"],
+                        aws_secret_access_key=sender_data["aws_secret_access_key"],
+                    ).Bucket(sender_data["bucket_name"]).download_file(
+                        Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
+                    )
 
-                # upload to user s3
-                boto3.resource(
-                    service_name="s3",
-                    region_name=self.user_data["region_name"],
-                    aws_access_key_id=self.user_data["aws_access_key_id"],
-                    aws_secret_access_key=self.user_data["aws_secret_access_key"],
-                ).Bucket(self.user_data["bucket_name"]).upload_file(
-                    Filename=doc.val()["file_path"], Key=doc.val()["file_path"]
-                )
+                    # upload to user s3
+                    boto3.resource(
+                        service_name="s3",
+                        region_name=self.user_data["region_name"],
+                        aws_access_key_id=self.user_data["aws_access_key_id"],
+                        aws_secret_access_key=self.user_data["aws_secret_access_key"],
+                    ).Bucket(self.user_data["bucket_name"]).upload_file(
+                        Filename=doc.val()["file_path"], Key=doc.val()["file_path"]
+                    )
 
-                # delete downloaded file
-                os.remove(doc.val()["file_path"])
+                    # delete downloaded file
+                    os.remove(doc.val()["file_path"])
 
-                # update meta
-                self.db.child("docs").child(doc.key()).update({"inS3_receiver": True})
-                print(
-                    f"File available in your bucket, {self.user_data['bucket_name']}."
-                )
+                    # update meta
+                    self.db.child("docs").child(doc.key()).update(
+                        {"inS3_receiver": True}
+                    )
+                    print(
+                        f"File available in your bucket, {self.user_data['bucket_name']}."
+                    )
 
-            if override or (
-                doc.val()["priority"] == "H" and doc.val()["inLocal_receiver"] != True
-            ):
-                # *** download to user's local machine *** #
+                if override or (
+                    doc.val()["priority"] == "H"
+                    and doc.val()["inLocal_receiver"] != True
+                ):
+                    # *** download to user's local machine *** #
 
-                boto3.resource(
-                    service_name="s3",
-                    region_name=self.user_data["region_name"],
-                    aws_access_key_id=self.user_data["aws_access_key_id"],
-                    aws_secret_access_key=self.user_data["aws_secret_access_key"],
-                ).Bucket(self.user_data["bucket_name"]).download_file(
-                    Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
-                )
+                    boto3.resource(
+                        service_name="s3",
+                        region_name=self.user_data["region_name"],
+                        aws_access_key_id=self.user_data["aws_access_key_id"],
+                        aws_secret_access_key=self.user_data["aws_secret_access_key"],
+                    ).Bucket(self.user_data["bucket_name"]).download_file(
+                        Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
+                    )
 
-                # update meta
-                self.db.child("docs").child(doc.key()).update(
-                    {"inLocal_receiver": True}
-                )
-                print(f"File available in your local machine.")
+                    # update meta
+                    self.db.child("docs").child(doc.key()).update(
+                        {"inLocal_receiver": True}
+                    )
+                    print(f"File available in your local machine.")
+
+                self.db.child("docs").child(doc.key()).update({"synced": True})
 
         print("Sync complete!")
