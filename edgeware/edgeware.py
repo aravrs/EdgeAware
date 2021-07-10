@@ -1,6 +1,7 @@
 import os
 import boto3
 import pyrebase
+from prettytable import PrettyTable
 
 import edgeware.ml
 
@@ -30,7 +31,7 @@ class Edgeware:
             email=email, password=password
         )
         self.user_data = {
-            "username": username,  # TODO: check, to be unique
+            "username": username,
             "email": email,
             "aws_access_key_id": aws_access_key_id,
             "aws_secret_access_key": aws_secret_access_key,
@@ -82,7 +83,7 @@ class Edgeware:
         priority=None,
     ):
         # update meta
-        data = {
+        metadata = {
             "sender": self.user_data["username"],
             "receiver": to_username,
             "file_path": file_path,
@@ -93,14 +94,16 @@ class Edgeware:
             "inLocal_receiver": False,
             "synced": False,
         }
-        push_meta = self.db.child("docs").push(data)
+        push_meta = self.db.child("docs").push(metadata)
 
         # predict priority
         if priority is None:
-            priority = ml.predict(data)
+            priority = ml.predict(metadata)
             print(f"Predicted file priority is {priority}.")
 
-        self.db.child("docs").child(push_meta["name"]).update({"priority": priority})
+        self.db.child("docs").child(push_meta["name"]).update(
+            {"priority": priority.lower()}
+        )
         print(f"File {file_path} tracked, will be synced to {to_username}!")
 
         # upload user s3
@@ -122,33 +125,37 @@ class Edgeware:
         self,
         override=False,
     ):
-        print("Syncing...")
-        all_docs = self.db.child("docs").get()  # TODO: if possible filter and fetch
+
+        all_docs = self.db.child("docs").get()
 
         # fetch where current user is receiver
         user_docs = []
         for doc in all_docs.each():
             if doc.val()["receiver"] == self.user_data["username"]:
-                # print(doc.val())
                 user_docs.append(doc)
 
+        # tabulate sync meta data
+        meta_table = PrettyTable(padding_width=5)
+        meta_table.field_names = ["ID", "SENDER", "FILE", "PRIORITY", "SYNCED"]
+
         # s3 functions
-        for i, doc in enumerate(user_docs):
-            print(
-                f"[{i}]",
-                f"Sender: {doc.val()['sender']}",
-                f"File: {doc.val()['file_path']}",
-                f"Priority: {doc.val()['priority']}",
-                f"Synced: {doc.val()['synced']}",
-            )
+        for idx, doc in enumerate(user_docs):
 
             if override or not doc.val()["synced"]:
-                if override or doc.val()["priority"] == "L":
+                print(
+                    f"[{idx}]",
+                    f"Sender: {doc.val()['sender']}",
+                    f"File: {doc.val()['file_path']}",
+                    f"Priority: {doc.val()['priority']}",
+                    f"Synced: {doc.val()['synced']}",
+                )
+
+                if override or doc.val()["priority"] == "low":
                     # *** do nothing *** #
                     print(f"File available in {doc.val()['sender']} bucket.")
 
                 if override or (
-                    doc.val()["priority"] in ["M", "H"]
+                    doc.val()["priority"] in ["medium", "high"]
                     and doc.val()["inS3_receiver"] == False
                     and doc.val()["inS3_sender"] == True
                 ):
@@ -194,7 +201,7 @@ class Edgeware:
                     )
 
                 if override or (
-                    doc.val()["priority"] == "H"
+                    doc.val()["priority"] == "high"
                     and doc.val()["inLocal_receiver"] != True
                 ):
                     # *** download to user's local machine *** #
@@ -216,4 +223,15 @@ class Edgeware:
 
                 self.db.child("docs").child(doc.key()).update({"synced": True})
 
-        print("Sync complete!")
+            # update table
+            meta_table.add_row(
+                [
+                    idx,
+                    doc.val()["sender"],
+                    doc.val()["file_path"],
+                    doc.val()["priority"],
+                    doc.val()["synced"],
+                ]
+            )
+
+        print(meta_table)
