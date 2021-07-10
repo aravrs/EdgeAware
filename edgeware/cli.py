@@ -30,6 +30,10 @@ class EdgewareCLI(cmd.Cmd):
         "Send: to_username, file_path, priority=None"
         ew.send(*parse(arg))
 
+    def do_Sync(self, arg):
+        "Sync: override=False"
+        ew.sync(*parse(arg))
+
     def do_logout(self, arg):
         "Stop recording, close the turtle window, and exit:  BYE"
         print("Edgeware terminated.")

@@ -1,4 +1,5 @@
 import os
+import ml
 import boto3
 import pyrebase
 
@@ -66,7 +67,7 @@ class Edgeware:
     def registered(func):
         def check(self, *args, **kwargs):
             if self.user["registered"]:
-                return func(*args, **kwargs)
+                return func(self, *args, **kwargs)
             else:
                 print("Please login!")
 
@@ -94,8 +95,7 @@ class Edgeware:
 
         # predict priority
         if priority is None:
-            # priority = predict(data) # TODO: ML model
-            priority = "H"
+            priority = ml.predict(data)
             print(f"Predicted file priority is {priority}.")
 
         self.db.child("docs").child(push_meta["name"]).update({"priority": priority})
