@@ -120,23 +120,23 @@ class Edgeware:
         # update meta
         self.db.child("docs").child(push_meta["name"]).update({"inS3_sender": True})
 
-    @registered
-    def sync(
-        self,
-        override=False,
-    ):
-
+    def _get_docs(self, user):
         all_docs = self.db.child("docs").get()
 
         # fetch where current user is receiver
         user_docs = []
         for doc in all_docs.each():
-            if doc.val()["receiver"] == self.user_data["username"]:
+            if doc.val()["receiver"] == user:
                 user_docs.append(doc)
+        return user_docs
 
-        # tabulate sync meta data
-        meta_table = PrettyTable(padding_width=5)
-        meta_table.field_names = ["ID", "SENDER", "FILE", "PRIORITY", "SYNCED"]
+    @registered
+    def sync(
+        self,
+        override=False,
+    ):
+        print("Syncing...")
+        user_docs = self._get_docs(self.user_data["username"])
 
         # s3 functions
         for idx, doc in enumerate(user_docs):
@@ -223,6 +223,17 @@ class Edgeware:
 
                 self.db.child("docs").child(doc.key()).update({"synced": True})
 
+        print("Sync complete.")
+
+    def check(self):
+
+        user_docs = self._get_docs(self.user_data["username"])
+
+        # tabulate sync meta data
+        meta_table = PrettyTable(padding_width=5)
+        meta_table.field_names = ["ID", "SENDER", "FILE", "PRIORITY", "SYNCED"]
+
+        for idx, doc in enumerate(user_docs):
             # update table
             meta_table.add_row(
                 [

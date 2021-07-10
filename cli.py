@@ -45,6 +45,10 @@ class EdgewareCLI(cmd.Cmd):
         "Send: to_username, file_path, priority=None"
         ew.send(*parse(arg))
 
+    def do_check(self, arg):
+        "Check"
+        ew.check(*parse(arg))
+
     def do_sync(self, arg):
         "Sync: override=False"
         ew.sync(*parse(arg))
