@@ -1,5 +1,9 @@
 import cmd, json
+import warnings
 from termcolor import colored
+
+# hide warnings
+warnings.filterwarnings("ignore")
 
 from edgeaware import EdgeAware
 
