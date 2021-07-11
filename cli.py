@@ -18,6 +18,16 @@ class EdgeAwareCLI(cmd.Cmd):
     prompt = colored("edgeaware >> ", "cyan")
     file = None
 
+    def handle(func):
+        def handler(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except Exception as e:
+                print(colored("Error! Please try again.", "red"))
+
+        return handler
+
+    @handle
     def do_register(self, arg):
         "Register:  email, username, password, aws_access_key_id, aws_secret_access_key, region_name, bucket_name"
         email = input("Email: ")
@@ -37,30 +47,37 @@ class EdgeAwareCLI(cmd.Cmd):
             bucket_name,
         )
 
+    @handle
     def do_login(self, arg):
         "Login: username, password"
         ew.login(*parse(arg))
 
+    @handle
     def do_reset_password(self, arg):
         "Reset Password: email"
         ew.reset_password(*parse(arg))
 
+    @handle
     def do_send(self, arg):
         "Send: to_username, file_path, priority=None"
         ew.send(*parse(arg))
 
+    @handle
     def do_delete(self, arg):
         "Delete: file_id"
         ew.delete(*parse(arg))
 
+    @handle
     def do_check(self, arg):
         "Check"
         ew.check(*parse(arg))
 
+    @handle
     def do_sync(self, arg):
         "Sync: file_id=None"
         ew.sync(*parse(arg))
 
+    @handle
     def do_logout(self, arg):
         "Logout"
         print(colored("EdgeAware terminated.", "red"))

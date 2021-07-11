@@ -68,7 +68,7 @@ class EdgeAware:
 
     def registered(func):
         def check(self, *args, **kwargs):
-            if self.user["registered"]:
+            if self.user and self.user.get("registered"):
                 return func(self, *args, **kwargs)
             else:
                 print("Please login!")
