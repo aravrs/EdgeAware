@@ -1,14 +1,12 @@
-import os
 import boto3
 import pyrebase
-from prettytable import PrettyTable
+from tabulate import tabulate
 
 import edgeaware.ml as ml
 
 
 class EdgeAware:
     # TODO: docstrings
-    # TODO: exceptions
     def __init__(self, firebaseConfig):
         self.user = None
         self.user_data = None
@@ -64,7 +62,7 @@ class EdgeAware:
         email,
     ):
         self.auth.send_password_reset_email(email)
-        print(f"Password reset mail is sent to {email}")
+        print(f"Password reset mail is sent to {email}.")
 
     def registered(func):
         def check(self, *args, **kwargs):
@@ -97,6 +95,7 @@ class EdgeAware:
         push_meta = self.db.child("docs").push(metadata)
 
         # predict priority
+        assert priority.lower() in ["high", "medium", "low"]
         if priority is None:
             priority = ml.predict(metadata)
             print(f"Predicted file priority is {priority}.")
@@ -115,7 +114,7 @@ class EdgeAware:
         ).Bucket(self.user_data["bucket_name"]).upload_file(
             Filename=file_path, Key=file_path
         )
-        print(f"Uploaded to bucket, {self.user_data['bucket_name']}!")
+        print(f"Uploaded to your bucket, {self.user_data['bucket_name']}!")
 
         # update meta
         self.db.child("docs").child(push_meta["name"]).update({"inS3_sender": True})
@@ -123,7 +122,7 @@ class EdgeAware:
     def _get_docs(self, user, sender=False):
         all_docs = self.db.child("docs").get()
 
-        # fetch where current user is receiver
+        # fetch where user is receiver/sender
         user_docs = []
         for doc in all_docs.each():
             if doc.val()["receiver"] == user:
@@ -140,10 +139,10 @@ class EdgeAware:
         print("Syncing...")
         user_docs = self._get_docs(self.user_data["username"])
 
-        # s3 functions
+        # s3 bucket functions
         for idx, doc in enumerate(user_docs):
 
-            # force download given file id
+            # force download if given file id
             override = False
             if file_id is not None and file_id == str(idx):
                 override = True
@@ -163,53 +162,17 @@ class EdgeAware:
 
                 if override or (
                     doc.val()["priority"] in ["medium", "high"]
-                    and doc.val()["inS3_receiver"] == False
                     and doc.val()["inS3_sender"] == True
                 ):
                     # *** move from sender s3 to user s3 *** #
-
-                    print(
-                        f"File shall be available in your bucket, {self.user_data['bucket_name']}."
-                    )
-
-                #     # download from sender s3
-                #     sender_data = (
-                #         self.db.child("users")
-                #         .child(doc.val()["sender"])
-                #         .get()
-                #         .each()[0]
-                #         .val()
-                #     )
-
-                #     boto3.resource(
-                #         service_name="s3",
-                #         region_name=sender_data["region_name"],
-                #         aws_access_key_id=sender_data["aws_access_key_id"],
-                #         aws_secret_access_key=sender_data["aws_secret_access_key"],
-                #     ).Bucket(sender_data["bucket_name"]).download_file(
-                #         Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
-                #     )
-
-                #     # upload to user s3
-                #     boto3.resource(
-                #         service_name="s3",
-                #         region_name=self.user_data["region_name"],
-                #         aws_access_key_id=self.user_data["aws_access_key_id"],
-                #         aws_secret_access_key=self.user_data["aws_secret_access_key"],
-                #     ).Bucket(self.user_data["bucket_name"]).upload_file(
-                #         Filename=doc.val()["file_path"], Key=doc.val()["file_path"]
-                #     )
-
-                #     # delete downloaded file
-                #     os.remove(doc.val()["file_path"])
-
-                #     # update meta
-                #     self.db.child("docs").child(doc.key()).update(
-                #         {"inS3_receiver": True}
-                #     )
-                #     print(
-                #         f"File available in your bucket, {self.user_data['bucket_name']}."
-                #     )
+                    if doc.val()["inS3_receiver"] == False:
+                        print(
+                            f"File shall be available in your bucket, {self.user_data['bucket_name']}."
+                        )
+                    elif doc.val()["inS3_receiver"]:
+                        print(
+                            f"File available in your bucket, {self.user_data['bucket_name']}."
+                        )
 
                 if override or (
                     doc.val()["priority"] == "high"
@@ -261,7 +224,9 @@ class EdgeAware:
                         print(f"File available in your local machine.")
 
                     else:
-                        print("File not found in any bucket, please delete meta.")
+                        print(
+                            "File not found in any bucket, please delete tracked meta."
+                        )
 
                 self.db.child("docs").child(doc.key()).update({"synced": True})
 
@@ -297,11 +262,7 @@ class EdgeAware:
                         aws_access_key_id=sender_data["aws_access_key_id"],
                         aws_secret_access_key=sender_data["aws_secret_access_key"],
                     ).Bucket(sender_data["bucket_name"]).delete_objects(
-                        Delete={
-                            "Objects": [
-                                {"Key": doc.val()["file_path"]}  # the_name of_your_file
-                            ]
-                        }
+                        Delete={"Objects": [{"Key": doc.val()["file_path"]}]}
                     )
                     print(
                         f"File deleted from {sender_data['username']} bucket, {sender_data['bucket_name']}"
@@ -315,14 +276,10 @@ class EdgeAware:
                         aws_access_key_id=self.user_data["aws_access_key_id"],
                         aws_secret_access_key=self.user_data["aws_secret_access_key"],
                     ).Bucket(self.user_data["bucket_name"]).delete_objects(
-                        Delete={
-                            "Objects": [
-                                {"Key": doc.val()["file_path"]}  # the_name of_your_file
-                            ]
-                        }
+                        Delete={"Objects": [{"Key": doc.val()["file_path"]}]}
                     )
                     print(
-                        f"File deleted from your bucket, {self.user_data['bucket_name']}"
+                        f"File deleted from {self.user_data['username']} bucket, {self.user_data['bucket_name']}"
                     )
 
                 # firebase delete meta
@@ -334,12 +291,10 @@ class EdgeAware:
         user_docs = self._get_docs(self.user_data["username"], sender=True)
 
         if len(user_docs) < 1:
-            print("No files found.")
+            print("No files tracked.")
 
         else:
-            # tabulate sync meta data
-            meta_table = PrettyTable(padding_width=5)
-            meta_table.field_names = [
+            headers = [
                 "ID",
                 "SENDER",
                 "RECEIVER",
@@ -348,17 +303,17 @@ class EdgeAware:
                 "SYNCED",
             ]
 
-            for idx, doc in enumerate(user_docs):
-                # update table
-                meta_table.add_row(
-                    [
-                        idx,
-                        doc.val()["sender"],
-                        doc.val()["receiver"],
-                        doc.val()["file_path"],
-                        doc.val()["priority"],
-                        doc.val()["synced"],
-                    ]
-                )
+            # update table
+            table = [
+                [
+                    idx,
+                    doc.val()["sender"],
+                    doc.val()["receiver"],
+                    doc.val()["file_path"],
+                    doc.val()["priority"],
+                    doc.val()["synced"],
+                ]
+                for idx, doc in enumerate(user_docs)
+            ]
 
-            print(meta_table)
+            print(tabulate(table, headers))
