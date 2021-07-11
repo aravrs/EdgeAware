@@ -1,4 +1,6 @@
 import cmd, json
+from termcolor import colored
+
 from edgeaware import EdgeAware
 
 
@@ -10,8 +12,10 @@ def parse(arg):
 
 
 class EdgeAwareCLI(cmd.Cmd):
-    intro = "Welcome to EdgeAware shell. Type help or ? to list commands."
-    prompt = "edgeaware >> "
+    intro = colored(
+        "Welcome to EdgeAware shell. Type help or ? to list commands.", "cyan"
+    )
+    prompt = colored("edgeaware >> ", "cyan")
     file = None
 
     def do_register(self, arg):
@@ -59,7 +63,7 @@ class EdgeAwareCLI(cmd.Cmd):
 
     def do_logout(self, arg):
         "Logout"
-        print("EdgeAware terminated.")
+        print(colored("EdgeAware terminated.", "red"))
         return True
 
     # utils
