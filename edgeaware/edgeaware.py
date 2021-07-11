@@ -168,44 +168,48 @@ class EdgeAware:
                 ):
                     # *** move from sender s3 to user s3 *** #
 
-                    # download from sender s3
-                    sender_data = (
-                        self.db.child("users")
-                        .child(doc.val()["sender"])
-                        .get()
-                        .each()[0]
-                        .val()
-                    )
-
-                    boto3.resource(
-                        service_name="s3",
-                        region_name=sender_data["region_name"],
-                        aws_access_key_id=sender_data["aws_access_key_id"],
-                        aws_secret_access_key=sender_data["aws_secret_access_key"],
-                    ).Bucket(sender_data["bucket_name"]).download_file(
-                        Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
-                    )
-
-                    # upload to user s3
-                    boto3.resource(
-                        service_name="s3",
-                        region_name=self.user_data["region_name"],
-                        aws_access_key_id=self.user_data["aws_access_key_id"],
-                        aws_secret_access_key=self.user_data["aws_secret_access_key"],
-                    ).Bucket(self.user_data["bucket_name"]).upload_file(
-                        Filename=doc.val()["file_path"], Key=doc.val()["file_path"]
-                    )
-
-                    # delete downloaded file
-                    os.remove(doc.val()["file_path"])
-
-                    # update meta
-                    self.db.child("docs").child(doc.key()).update(
-                        {"inS3_receiver": True}
-                    )
                     print(
-                        f"File available in your bucket, {self.user_data['bucket_name']}."
+                        f"File shall be available in your bucket, {self.user_data['bucket_name']}."
                     )
+
+                #     # download from sender s3
+                #     sender_data = (
+                #         self.db.child("users")
+                #         .child(doc.val()["sender"])
+                #         .get()
+                #         .each()[0]
+                #         .val()
+                #     )
+
+                #     boto3.resource(
+                #         service_name="s3",
+                #         region_name=sender_data["region_name"],
+                #         aws_access_key_id=sender_data["aws_access_key_id"],
+                #         aws_secret_access_key=sender_data["aws_secret_access_key"],
+                #     ).Bucket(sender_data["bucket_name"]).download_file(
+                #         Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
+                #     )
+
+                #     # upload to user s3
+                #     boto3.resource(
+                #         service_name="s3",
+                #         region_name=self.user_data["region_name"],
+                #         aws_access_key_id=self.user_data["aws_access_key_id"],
+                #         aws_secret_access_key=self.user_data["aws_secret_access_key"],
+                #     ).Bucket(self.user_data["bucket_name"]).upload_file(
+                #         Filename=doc.val()["file_path"], Key=doc.val()["file_path"]
+                #     )
+
+                #     # delete downloaded file
+                #     os.remove(doc.val()["file_path"])
+
+                #     # update meta
+                #     self.db.child("docs").child(doc.key()).update(
+                #         {"inS3_receiver": True}
+                #     )
+                #     print(
+                #         f"File available in your bucket, {self.user_data['bucket_name']}."
+                #     )
 
                 if override or (
                     doc.val()["priority"] == "high"
@@ -213,20 +217,51 @@ class EdgeAware:
                 ):
                     # *** download to user's local machine *** #
 
-                    boto3.resource(
-                        service_name="s3",
-                        region_name=self.user_data["region_name"],
-                        aws_access_key_id=self.user_data["aws_access_key_id"],
-                        aws_secret_access_key=self.user_data["aws_secret_access_key"],
-                    ).Bucket(self.user_data["bucket_name"]).download_file(
-                        Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
-                    )
+                    if doc.val()["inS3_receiver"]:
+                        boto3.resource(
+                            service_name="s3",
+                            region_name=self.user_data["region_name"],
+                            aws_access_key_id=self.user_data["aws_access_key_id"],
+                            aws_secret_access_key=self.user_data[
+                                "aws_secret_access_key"
+                            ],
+                        ).Bucket(self.user_data["bucket_name"]).download_file(
+                            Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
+                        )
 
-                    # update meta
-                    self.db.child("docs").child(doc.key()).update(
-                        {"inLocal_receiver": True}
-                    )
-                    print(f"File available in your local machine.")
+                        # update meta
+                        self.db.child("docs").child(doc.key()).update(
+                            {"inLocal_receiver": True}
+                        )
+                        print(f"File available in your local machine.")
+
+                    elif doc.val()["inS3_sender"]:
+
+                        sender_data = (
+                            self.db.child("users")
+                            .child(doc.val()["sender"])
+                            .get()
+                            .each()[0]
+                            .val()
+                        )
+
+                        boto3.resource(
+                            service_name="s3",
+                            region_name=sender_data["region_name"],
+                            aws_access_key_id=sender_data["aws_access_key_id"],
+                            aws_secret_access_key=sender_data["aws_secret_access_key"],
+                        ).Bucket(sender_data["bucket_name"]).download_file(
+                            Key=doc.val()["file_path"], Filename=doc.val()["file_path"]
+                        )
+
+                        # update meta
+                        self.db.child("docs").child(doc.key()).update(
+                            {"inLocal_receiver": True}
+                        )
+                        print(f"File available in your local machine.")
+
+                    else:
+                        print("File not found in any bucket, please delete meta.")
 
                 self.db.child("docs").child(doc.key()).update({"synced": True})
 
