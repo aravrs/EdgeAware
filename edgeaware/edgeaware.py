@@ -1,6 +1,7 @@
 import boto3
 import pyrebase
 from tabulate import tabulate
+from termcolor import colored
 
 import edgeaware.ml as ml
 
@@ -39,7 +40,7 @@ class EdgeAware:
         self.db.child("users").child(username).push(
             self.user_data, self.user["idToken"]
         )
-        print(f"Registered, {username}!")
+        print(colored(f"Registered, {username}!", "green"))
 
     def login(
         self,
@@ -55,21 +56,21 @@ class EdgeAware:
 
         if self.user["registered"]:
             self.user_data = db_user_data
-            print(f"Logged in, {username}!")
+            print(colored(f"Logged in, {username}!", "green"))
 
     def reset_password(
         self,
         email,
     ):
         self.auth.send_password_reset_email(email)
-        print(f"Password reset mail is sent to {email}.")
+        print(colored(f"Password reset mail is sent to {email}.", "blue"))
 
     def registered(func):
         def check(self, *args, **kwargs):
             if self.user and self.user.get("registered"):
                 return func(self, *args, **kwargs)
             else:
-                print("Please login!")
+                print(colored("Please login!", "red"))
 
         return check
 
@@ -95,11 +96,11 @@ class EdgeAware:
         push_meta = self.db.child("docs").push(metadata)
 
         # predict priority
-        assert priority.lower() in ["high", "medium", "low"]
         if priority is None:
             priority = ml.predict(metadata)
             print(f"Predicted file priority is {priority}.")
 
+        assert priority.lower() in ["high", "medium", "low"]
         self.db.child("docs").child(push_meta["name"]).update(
             {"priority": priority.lower()}
         )
@@ -136,7 +137,7 @@ class EdgeAware:
         self,
         file_id=None,
     ):
-        print("Syncing...")
+        print(colored("Syncing...", "blue"))
         user_docs = self._get_docs(self.user_data["username"])
 
         # s3 bucket functions
@@ -149,11 +150,11 @@ class EdgeAware:
 
             if override or not doc.val()["synced"]:
                 print(
-                    f"[{idx}]",
-                    f"Sender: {doc.val()['sender']}",
+                    colored(f"[{idx}] ", "magenta") + f"Sender: {doc.val()['sender']}",
                     f"File: {doc.val()['file_path']}",
                     f"Priority: {doc.val()['priority']}",
                     f"Synced: {doc.val()['synced']}",
+                    sep=" | ",
                 )
 
                 if override or doc.val()["priority"] == "low":
@@ -230,16 +231,17 @@ class EdgeAware:
 
                 self.db.child("docs").child(doc.key()).update({"synced": True})
 
-        print("Sync complete.")
+        print(colored("Sync complete.", "blue"))
 
+    @registered
     def delete(self, file_id):
-        print("Deleting...")
+        print(colored("Deleting...", "blue"))
         user_docs = self._get_docs(self.user_data["username"], sender=True)
 
         for idx, doc in enumerate(user_docs):
             if file_id == str(idx):
                 print(
-                    f"[{idx}] " + f"Sender: {doc.val()['sender']}",
+                    colored(f"[{idx}] ", "magenta") + f"Sender: {doc.val()['sender']}",
                     f"File: {doc.val()['file_path']}",
                     f"Priority: {doc.val()['priority']}",
                     f"Synced: {doc.val()['synced']}",
@@ -287,6 +289,7 @@ class EdgeAware:
 
                 print("File deleted.")
 
+    @registered
     def check(self):
         user_docs = self._get_docs(self.user_data["username"], sender=True)
 
@@ -295,12 +298,12 @@ class EdgeAware:
 
         else:
             headers = [
-                "ID",
-                "SENDER",
-                "RECEIVER",
-                "FILE",
-                "PRIORITY",
-                "SYNCED",
+                colored("ID", "magenta"),
+                colored("SENDER", "magenta"),
+                colored("RECEIVER", "magenta"),
+                colored("FILE", "magenta"),
+                colored("PRIORITY", "magenta"),
+                colored("SYNCED", "magenta"),
             ]
 
             # update table
@@ -316,4 +319,4 @@ class EdgeAware:
                 for idx, doc in enumerate(user_docs)
             ]
 
-            print(tabulate(table, headers))
+            print("\n", tabulate(table, headers), "\n")

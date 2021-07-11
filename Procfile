@@ -1,1 +1,1 @@
-worker: python helper/transfer.py
+worker: python worker/transfer.py
