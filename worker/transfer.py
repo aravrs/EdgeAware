@@ -105,7 +105,8 @@ if __name__ == "__main__":
         print("transferring...")
 
         all_docs = db.child("docs").get()
-        for doc in all_docs.each():
-            transfer(doc)
+        if all_docs.each():
+            for doc in all_docs.each():
+                transfer(doc)
 
         time.sleep(1 * 60)  # transfer every 1 min(s)

@@ -125,11 +125,13 @@ class EdgeAware:
 
         # fetch where user is receiver/sender
         user_docs = []
-        for doc in all_docs.each():
-            if doc.val()["receiver"] == user:
-                user_docs.append(doc)
-            if sender and doc.val()["sender"] == user:
-                user_docs.append(doc)
+        if all_docs.each():
+            for doc in all_docs.each():
+                if doc.val()["receiver"] == user:
+                    user_docs.append(doc)
+                if sender and doc.val()["sender"] == user:
+                    user_docs.append(doc)
+
         return user_docs
 
     @registered
@@ -294,7 +296,7 @@ class EdgeAware:
         user_docs = self._get_docs(self.user_data["username"], sender=True)
 
         if len(user_docs) < 1:
-            print("No files tracked.")
+            print(colored("No files tracked.", "magenta"))
 
         else:
             headers = [
