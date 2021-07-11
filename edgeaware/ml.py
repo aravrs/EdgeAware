@@ -1,7 +1,7 @@
 import pickle
 
-vectorizer = pickle.load(open("edgeaware/vectorizer.pickel", "rb"))
-model = pickle.load(open("edgeaware/model.pickel", "rb"))
+vectorizer = pickle.load(open("edgeaware/weights/vectorizer.pickel", "rb"))
+model = pickle.load(open("edgeaware/weights/model.pickel", "rb"))
 
 
 def predict(data):
